@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Preceptoría - Gestión Institucional</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#24496e" />
+
+    <style>
+      :root{
+        --azul:#24496e;
+        --crema:#f3efdc;
+        --violeta:#6c467e;
+        --salmon:#da6863;
+      }
+      body{ background:var(--crema); }
+      
+      /* Scrollbar minimalista */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+  </head>
+  <body class="min-h-dvh text-slate-900">
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      const SUPABASE_URL = ''; // Agregá tu URL si usás Supabase
+      const SUPABASE_ANON_KEY = ''; // Agregá tu Key si usás Supabase
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        window.sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      } else { window.sb = null; }
+    </script>
+
+    <script src="app.js"></script>
+
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(()=>{});
+      }
+    </script>
+
+    <footer class="p-6 md:p-8 text-sm text-slate-700">
+      <div class="max-w-3xl mx-auto space-y-3">
+        <h3 class="text-base md:text-lg font-semibold" style="color:var(--azul)">App de Preceptoría Institucional</h3>
+        <p>Sistema optimizado para gestión de trayectorias, cursos y estudiantes.</p>
+        <div class="mt-8 text-center">
+          <a href="https://cafecito.app/docentesbrown" target="_blank" rel="noopener"
+             class="inline-block px-5 py-3 rounded-2xl text-white font-semibold shadow"
+             style="background:var(--salmon)">
+            ☕ Bancanos con un cafecito
+          </a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
