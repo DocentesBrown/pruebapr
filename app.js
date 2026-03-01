@@ -452,105 +452,132 @@ function MainApp() {
   const coursesList = Object.values(state.courses);
 
   if (activeAttendance && course) {
-    return e('div', { className: 'max-w-4xl mx-auto p-4 md:p-6 min-h-dvh flex items-center justify-center' },
-      e(AttendanceView, { course, subjectId: activeAttendance.subjectId, day: activeAttendance.day, onClose: () => setActiveAttendance(null), onSaveAttendance: handleSaveAttendance })
+    return e('div', { className: 'min-h-dvh' },
+      e('header',
+        { className: 'w-full p-4 md:p-6 text-white flex items-center justify-between sticky top-0 z-10 shadow', style:{ background:'#24496e' } },
+        e('div', { className:'flex flex-col gap-1' },
+          e('div', { className:'flex items-center gap-3' }, e('span', { className:'text-2xl md:text-3xl font-bold tracking-tight' }, 'Preceptoría')),
+          e('span', { className:'text-xs md:text-sm underline', style:{ opacity:.9 } }, 'creado por @docentesbrown')
+        ),
+        e('button', { onClick:()=>setActiveAttendance(null), className:'px-3 py-2 rounded-xl text-sm font-semibold', style:{ background:'#f3efdc', color:'#24496e' } }, '← Volver')
+      ),
+      e('main', { className:'max-w-5xl mx-auto p-4 md:p-6' },
+        e(AttendanceView, { course, subjectId: activeAttendance.subjectId, day: activeAttendance.day, onClose: () => setActiveAttendance(null), onSaveAttendance: handleSaveAttendance })
+      )
     );
   }
 
-  return e('div', { className: 'max-w-5xl mx-auto p-4 md:p-6' },
-    e('header', { className: 'flex flex-col md:flex-row justify-between items-center mb-6 gap-4 bg-white p-4 rounded-3xl shadow-sm border border-slate-200' },
-      e('div', null, e('h1', { className: 'text-2xl font-bold', style: { color: 'var(--azul)' } }, 'Preceptoría')),
-      e('div', { className: 'flex gap-2 flex-wrap justify-center' },
-        e('select', { value: state.selectedCourseId || '', onChange: e => setState({ ...state, selectedCourseId: e.target.value }), className: 'px-3 py-2 border rounded-xl font-medium bg-slate-50' },
+  return e('div', { className:'min-h-dvh' },
+    e('header',
+      { className: 'w-full p-4 md:p-6 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sticky top-0 z-10 shadow', style:{ background:'#24496e' } },
+      e('div', { className:'flex flex-col gap-1' },
+        e('div', { className:'flex items-center gap-3' }, e('span', { className:'text-2xl md:text-3xl font-bold tracking-tight' }, 'Preceptoría')),
+        e('span', { className:'text-xs md:text-sm underline', style:{ opacity:.9 } }, 'creado por @docentesbrown')
+      ),
+      e('div', { className:'flex gap-2 flex-wrap w-full md:w-auto' },
+        e('select', { value: state.selectedCourseId || '', onChange: e => setState({ ...state, selectedCourseId: e.target.value }), className:'rounded-md px-2 py-2 text-sm min-w-[200px]', style:{ color:'#24496e' } },
           e('option', { value: '' }, '-- Seleccionar Curso --'),
           coursesList.map(c => e('option', { key: c.id, value: c.id }, c.name))
         ),
-        course && e(Button, { variant: 'secondary', onClick: () => setAttendanceConfigOpen(true) }, '📋 Tomar Asistencia'),
-        e(Button, { variant: 'outline', onClick: () => setNewCourseOpen(true) }, '+ Nuevo Curso')
+        course && e('button', { onClick: () => setAttendanceConfigOpen(true), className:'px-3 py-2 rounded-xl text-sm font-semibold', style:{ background:'#6c467e', color:'#fff' } }, '📋 Tomar asistencia'),
+        e('button', { onClick: () => setNewCourseOpen(true), className:'px-3 py-2 rounded-xl text-sm font-semibold', style:{ background:'#f3efdc', color:'#24496e' } }, '+ Nuevo curso')
       )
     ),
 
-    course ? e('div', { className: 'bg-white rounded-3xl p-6 shadow-sm border border-slate-200' },
-      e('div', { className: 'flex justify-between items-center mb-4 border-b pb-4' },
-        e('div', null,
-          e('h2', { className: 'text-2xl font-bold', style: { color: 'var(--violeta)' } }, course.name),
-          e('p', { className: 'text-sm text-slate-500 font-medium mt-1' }, `Turno ${course.shift || 'N/A'} • ${course.subjects.length} materias`)
-        ),
-        e(Button, { variant: 'danger', onClick: () => setNewStudentOpen(true) }, '+ Agregar Estudiante')
-      ),
-      
-      e('div', { className: 'overflow-x-auto' },
-        e('table', { className: 'w-full text-left border-collapse' },
-          e('thead', { className: 'bg-slate-50' },
-            e('tr', null,
-              e('th', { className: 'p-3 text-sm font-semibold border-b text-slate-600' }, 'Estudiante'),
-              e('th', { className: 'p-3 text-sm font-semibold border-b text-slate-600 text-center hidden md:table-cell' }, 'Materias'),
-              e('th', { className: 'p-3 text-sm font-semibold border-b text-slate-600 text-center', title: 'Presentes globales' }, 'P'),
-              e('th', { className: 'p-3 text-sm font-semibold border-b text-slate-600 text-center', title: 'Ausentes globales' }, 'A'),
-              e('th', { className: 'p-3 text-sm font-semibold border-b text-slate-600 text-center' }, '% Asist.'),
-              e('th', { className: 'p-3 text-sm font-semibold border-b text-slate-600 text-center' }, 'Promedio'),
-              e('th', { className: 'p-3 text-sm font-semibold border-b text-slate-600 text-center' }, 'Acciones Institucionales')
+    e('main', { className:'max-w-5xl mx-auto' },
+      Object.keys(state.courses).length === 0
+        ? e('div', { className:'p-6 md:p-10 text-center' },
+            e('h2', { className:'text-xl md:text-2xl font-semibold mb-2', style:{ color:'#24496e' } }, 'No hay cursos aún'),
+            e('p', { className:'text-slate-700 mb-4' }, 'Creá tu primer curso para comenzar.'),
+            e('button', { onClick:()=>setNewCourseOpen(true), className:'px-4 py-2 rounded-2xl text-white shadow', style:{ background:'#6c467e' } }, '+ Nuevo curso')
+          )
+        : e('div', { className:'w-full overflow-x-auto border-b border-slate-300 bg-white' },
+            e('div', { className:'flex items-center gap-2 p-3 min-w-max' },
+              ...coursesList.map(c => e('button', { key:c.id, onClick:()=>setState({ ...state, selectedCourseId: c.id }), className:'px-3 py-2 rounded-2xl border text-sm font-medium', style: state.selectedCourseId===c.id ? { borderColor:'#24496e', background:'#f0f4f8', color:'#24496e' } : { borderColor:'#d7dbe0', color:'#334155' } }, c.name)),
+              e('button', { onClick:()=>setNewCourseOpen(true), className:'px-3 py-2 rounded-2xl text-sm', style:{ background:'#f3efdc', color:'#24496e' } }, '+ Nuevo curso')
             )
           ),
-          e('tbody', null,
-            Object.values(course.students || {}).map(st => {
-              const totalSubs = course.subjects.length;
-              const cursaSubs = (st.subjects_enrolled || []).length;
-              const isRegular = cursaSubs === totalSubs;
-              
-              // Calcular Asistencia Global
-              let totalPresent = 0; let totalAbsent = 0;
-              if (st.attendance) {
-                Object.values(st.attendance).forEach(att => {
-                  totalPresent += (att.present || 0);
-                  totalAbsent += (att.absent || 0);
-                });
-              }
-              const d = totalPresent + totalAbsent;
-              const attendancePct = d ? Math.round((totalPresent / d) * 100) : 0;
-              
-              // Calcular Promedio Institucional (todas las materias)
-              let allGrades = [];
-              if (st.grades) {
-                Object.values(st.grades).forEach(subjGrades => {
-                  Object.values(subjGrades).forEach(val => {
-                    const num = Number(val);
-                    if (!Number.isNaN(num) && val !== '') allGrades.push(num);
-                  });
-                });
-              }
-              const promedio = allGrades.length ? Math.round((allGrades.reduce((a, b) => a + b, 0) / allGrades.length) * 100) / 100 : '-';
-              
-              return e('tr', { key: st.id, className: 'border-b hover:bg-slate-50 transition-colors' },
-                e('td', { className: 'p-3 font-medium text-slate-800' }, st.name),
-                e('td', { className: 'p-3 text-center hidden md:table-cell' },
-                  isRegular 
-                    ? e('span', { className: 'bg-emerald-100 text-emerald-800 text-xs px-2 py-1 rounded-full font-bold' }, 'Todas')
-                    : e('span', { className: 'bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full font-bold' }, `${cursaSubs}/${totalSubs}`)
+
+      course
+        ? e('div', { className:'p-4 md:p-6' },
+            e('div', { className:'bg-white rounded-2xl shadow border', style:{ borderColor:'#cbd5e1' } },
+              e('div', { className:'p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b', style:{ borderColor:'#e2e8f0' } },
+                e('div', null,
+                  e('h2', { className:'text-2xl font-bold', style:{ color:'#6c467e' } }, course.name),
+                  e('p', { className:'text-sm text-slate-500 font-medium mt-1' }, `Turno ${course.shift || 'N/A'} • ${course.subjects.length} materias`)
                 ),
-                e('td', { className: 'p-3 text-center text-sm font-medium text-emerald-600' }, totalPresent),
-                e('td', { className: 'p-3 text-center text-sm font-medium text-rose-600' }, totalAbsent),
-                e('td', { className: 'p-3 text-center text-sm font-bold ' + (d > 0 && attendancePct < 60 ? 'text-rose-600' : 'text-slate-700') }, d > 0 ? `${attendancePct}%` : '-'),
-                e('td', { className: 'p-3 text-center text-sm font-bold ' + (promedio !== '-' && promedio < 7 ? 'text-rose-600' : 'text-slate-700') }, promedio),
-                e('td', { className: 'p-3 text-center flex justify-center gap-1 flex-wrap' },
-                  e(Button, { variant: 'outline', className: '!text-xs !px-2 !py-1', onClick: () => setGradesStudentId(st.id) }, '📝 Notas'),
-                  e(Button, { variant: 'danger', className: '!text-xs !px-2 !py-1', onClick: () => {
-                      const phone = prompt('Número de WhatsApp del tutor o estudiante (Ej: 1122334455):', '');
-                      if(!phone) return;
-                      const cleanPhone = sanitizePhone(phone);
-                      const msg = buildRiskMessage(course, st, attendancePct, promedio);
-                      window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
-                  }}, '⚠️ Riesgo'),
-                  !isRegular && e(Button, { variant: 'outline', className: '!text-xs !px-2 !py-1 !border-amber-300 !text-amber-600', onClick: () => setExternalSubject(st.id) }, '🔗 Ext.')
+                e('button', { onClick: () => setNewStudentOpen(true), className:'px-4 py-2 rounded-xl text-white font-semibold', style:{ background:'#da6863' } }, '+ Agregar estudiante')
+              ),
+              e('div', { className:'overflow-x-auto' },
+                e('table', { className:'w-full text-left border rounded-xl overflow-hidden', style:{ borderColor:'#cbd5e1' } },
+                  e('thead', { style:{ background:'#24496e', color:'#ffffff' } },
+                    e('tr', null,
+                      e('th', { className:'p-3 text-sm' }, 'Estudiante'),
+                      e('th', { className:'p-3 text-sm text-center hidden md:table-cell' }, 'Materias'),
+                      e('th', { className:'p-3 text-sm text-center', title:'Presentes globales' }, 'P'),
+                      e('th', { className:'p-3 text-sm text-center', title:'Ausentes globales' }, 'A'),
+                      e('th', { className:'p-3 text-sm text-center' }, '% Asistencia'),
+                      e('th', { className:'p-3 text-sm text-center' }, 'Promedio'),
+                      e('th', { className:'p-3 text-sm text-center' }, 'Acciones')
+                    )
+                  ),
+                  e('tbody', null,
+                    ...Object.values(course.students || {}).map((st, idx) => {
+                      const totalSubs = course.subjects.length;
+                      const cursaSubs = (st.subjects_enrolled || []).length;
+                      const isRegular = cursaSubs === totalSubs;
+                      let totalPresent = 0; let totalAbsent = 0;
+                      if (st.attendance) {
+                        Object.values(st.attendance).forEach(att => { totalPresent += (att.present || 0); totalAbsent += (att.absent || 0); });
+                      }
+                      const d = totalPresent + totalAbsent;
+                      const attendancePct = d ? Math.round((totalPresent / d) * 100) : 0;
+                      let allGrades = [];
+                      if (st.grades) {
+                        Object.values(st.grades).forEach(subjGrades => {
+                          Object.values(subjGrades).forEach(val => {
+                            const num = Number(val);
+                            if (!Number.isNaN(num) && val !== '') allGrades.push(num);
+                          });
+                        });
+                      }
+                      const promedio = allGrades.length ? Math.round((allGrades.reduce((a, b) => a + b, 0) / allGrades.length) * 100) / 100 : '-';
+                      const rowBg = idx % 2 === 0 ? '#ffffff' : '#f3efdc';
+                      return e('tr', { key: st.id, style:{ background:rowBg, borderTop:'1px solid #cbd5e1' } },
+                        e('td', { className:'p-3 font-medium' }, st.name),
+                        e('td', { className:'p-3 text-center hidden md:table-cell' },
+                          isRegular ? e('span', { className:'text-xs px-2 py-1 rounded-full font-bold', style:{ background:'#e8f7ef', color:'#166534' } }, 'Todas')
+                                    : e('span', { className:'text-xs px-2 py-1 rounded-full font-bold', style:{ background:'#fff3cd', color:'#92400e' } }, `${cursaSubs}/${totalSubs}`)
+                        ),
+                        e('td', { className:'p-3 text-center text-sm font-medium', style:{ color:'#166534' } }, totalPresent),
+                        e('td', { className:'p-3 text-center text-sm font-medium', style:{ color:'#da6863' } }, totalAbsent),
+                        e('td', { className:'p-3 text-center text-sm font-semibold', style: d > 0 && attendancePct < 60 ? { color:'#991b1b', background:'#fdecea', borderRadius:'8px' } : { color:'#24496e' } }, d > 0 ? `${attendancePct}%` : '-'),
+                        e('td', { className:'p-3 text-center text-sm font-semibold', style: (promedio !== '-' && promedio < 7) ? { color:'#991b1b' } : { color:'#24496e' } }, promedio),
+                        e('td', { className:'p-3 text-right' },
+                          e('div', { className:'flex gap-2 justify-end flex-wrap' },
+                            e('button', { onClick: () => setGradesStudentId(st.id), className:'text-xs px-3 py-1 rounded', style:{ background:'#f0eaf5', color:'#6c467e' } }, 'Notas'),
+                            e('button', { onClick: () => {
+                                const phone = prompt('Número de WhatsApp del tutor o estudiante (Ej: 1122334455):', '');
+                                if(!phone) return;
+                                const cleanPhone = sanitizePhone(phone);
+                                const msg = buildRiskMessage(course, st, attendancePct, promedio);
+                                window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+                              }, className:'text-xs px-3 py-1 rounded', style:{ background:'#fde2e0', color:'#da6863' } }, 'Riesgo'),
+                            !isRegular && e('button', { onClick: () => setExternalSubject(st.id), className:'text-xs px-3 py-1 rounded', style:{ background:'#f3efdc', color:'#92400e' } }, 'Ext.')
+                          )
+                        )
+                      );
+                    }),
+                    ...(Object.keys(course.students || {}).length === 0 ? [e('tr', { key:'empty' }, e('td', { colSpan:7, className:'p-4 text-center text-slate-500' }, 'Aún no hay estudiantes registrados en este curso.'))] : [])
+                  )
                 )
-              );
-            })
+              )
+            )
           )
-        ),
-        Object.keys(course.students || {}).length === 0 && e('div', { className: 'p-6 text-center text-slate-500' }, 'Aún no hay estudiantes registrados en este curso.')
-      )
-    ) : e('div', { className: 'p-12 text-center text-slate-500 bg-white rounded-3xl border border-dashed border-slate-300' },
-      'Seleccioná o creá un curso para comenzar a gestionar los estudiantes y sus trayectorias.'
+        : (Object.keys(state.courses).length > 0 ? e('div', { className:'p-6 md:p-10 text-center' },
+            e('h2', { className:'text-xl md:text-2xl font-semibold mb-2', style:{ color:'#24496e' } }, 'Seleccioná un curso'),
+            e('p', { className:'text-slate-700 mb-4' }, 'Usá la barra superior para elegir un curso.')
+          ) : null)
     ),
 
     e(NewCourseModal, { open: newCourseOpen, onClose: () => setNewCourseOpen(false), onCreate: createCourse }),
