@@ -16,6 +16,25 @@ function loadState() {
 }
 function saveState(state) { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
 
+function sanitizePhone(phoneRaw=''){
+  let d = String(phoneRaw).replace(/\D+/g, '');
+  if (!d) return '';
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.startsWith('0')) d = d.slice(1);
+  d = d.replace(/^54(9?)(\d{2,4})15(\d{7,8})$/, '54$1$2$3');
+  if (!d.startsWith('54') && d.length >= 10 && d.length <= 11) d = '54' + d;
+  if (d.startsWith('54') && d[2] !== '9') d = '54' + '9' + d.slice(2);
+  d = d.replace(/^549(\d{2,4})15(\d{7,8})$/, '549$1$2');
+  return d;
+}
+
+function buildRiskMessage(course, student, attendancePct, promedio){
+  const courseName = course?.name || 'curso';
+  const pName = student?.name || '';
+  const msg = `Hola. Aviso de RIESGO PEDAGÓGICO para ${pName} (${courseName}). Asistencia global: ${attendancePct}%. Promedio institucional: ${promedio}. Por favor, acercarse a preceptoría.`;
+  return encodeURIComponent(msg);
+}
+
 // ====== UI COMPONENTES BÁSICOS ======
 function Button({ onClick, children, variant = 'primary', className = '', disabled = false }) {
   const styles = {
@@ -33,7 +52,6 @@ function Button({ onClick, children, variant = 'primary', className = '', disabl
 }
 
 // ====== MODALES ======
-// 1. Crear Curso (Wizard de 2 pasos unificando Año/División y Dropdowns para materias)
 function NewCourseModal({ open, onClose, onCreate }) {
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
@@ -73,7 +91,6 @@ function NewCourseModal({ open, onClose, onCreate }) {
       if (!name.trim()) return alert('El Nombre del curso es obligatorio.');
       setStep(2);
     } else {
-      // Validación estricta: No permitir materias sin día o módulo seleccionado
       const incomplete = subjects.some(s => !s.name.trim() || !s.days || !s.modulos);
       if (incomplete) {
         return alert('Debes completar el nombre, el día y el módulo para todas las materias.');
@@ -124,7 +141,6 @@ function NewCourseModal({ open, onClose, onCreate }) {
   );
 }
 
-// 2. Cargar Estudiante
 function NewStudentModal({ open, course, onClose, onAdd }) {
   const [name, setName] = useState('');
   const [allSubjects, setAllSubjects] = useState(true);
@@ -174,7 +190,6 @@ function NewStudentModal({ open, course, onClose, onAdd }) {
   );
 }
 
-// 3. Gestión Institucional de Notas
 function GradesModal({ open, student, course, onClose, onSave }) {
   const [subjectId, setSubjectId] = useState('');
   const [grades, setGrades] = useState({});
@@ -203,20 +218,29 @@ function GradesModal({ open, student, course, onClose, onSave }) {
   }
 
   const currentSubjectGrades = grades[subjectId] || {};
+  const currentSubjectValues = Object.values(currentSubjectGrades).map(v => Number(v)).filter(v => !Number.isNaN(v) && v > 0);
+  const avgSubj = currentSubjectValues.length ? Math.round((currentSubjectValues.reduce((a,b)=>a+b,0) / currentSubjectValues.length)*100)/100 : '-';
+
   const isEnrolled = student.subjects_enrolled?.includes(subjectId);
   const externalData = student.external_subjects?.[subjectId];
 
   return e('div', { className: 'fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50' },
     e('div', { className: 'bg-white rounded-3xl p-6 w-full max-w-md shadow-xl' },
       e('div', { className: 'flex justify-between items-center mb-4' },
-        e('h2', { className: 'text-xl font-bold', style: { color: 'var(--violeta)' } }, 'Calificaciones Institucionales'),
+        e('h2', { className: 'text-xl font-bold', style: { color: 'var(--violeta)' } }, 'Editar Calificaciones'),
         e('button', { onClick: onClose, className: 'text-slate-400 font-bold text-xl' }, '✕')
       ),
       e('div', { className: 'mb-4 text-center font-bold text-lg border-b pb-2' }, student.name),
-      e('div', { className: 'mb-4' },
-        e('label', { className: 'block text-sm mb-1 font-medium' }, 'Materia:'),
-        e('select', { value: subjectId, onChange: e => setSubjectId(e.target.value), className: 'w-full px-3 py-2 border rounded-xl' },
-          (course.subjects || []).map(s => e('option', { key: s.id, value: s.id }, s.name))
+      e('div', { className: 'mb-4 flex items-center gap-2' },
+        e('div', { className: 'flex-1' },
+          e('label', { className: 'block text-sm mb-1 font-medium' }, 'Materia:'),
+          e('select', { value: subjectId, onChange: e => setSubjectId(e.target.value), className: 'w-full px-3 py-2 border rounded-xl' },
+            (course.subjects || []).map(s => e('option', { key: s.id, value: s.id }, s.name))
+          )
+        ),
+        e('div', { className: 'w-24 text-center bg-slate-100 rounded-xl p-2' },
+          e('div', { className: 'text-[10px] font-bold text-slate-500 uppercase' }, 'Promedio'),
+          e('div', { className: 'text-xl font-bold ' + (avgSubj !== '-' && avgSubj < 7 ? 'text-red-600' : 'text-slate-800') }, avgSubj)
         )
       ),
       !isEnrolled ? e('div', { className: 'bg-red-50 text-red-700 p-3 rounded-xl text-sm mb-4 text-center border border-red-200' },
@@ -237,7 +261,6 @@ function GradesModal({ open, student, course, onClose, onSave }) {
   );
 }
 
-// 4. Modal Configurar Asistencia
 function AttendanceConfigModal({ open, course, onClose, onStart }) {
   const [subjectId, setSubjectId] = useState('');
   const [day, setDay] = useState('');
@@ -277,7 +300,6 @@ function AttendanceConfigModal({ open, course, onClose, onStart }) {
   );
 }
 
-// ====== VISTA DE TOMA DE ASISTENCIA (ESTILO TARJETAS) ======
 function AttendanceView({ course, subjectId, day, onClose, onSaveAttendance }) {
   const students = Object.values(course.students || {}).sort((a, b) => a.name.localeCompare(b.name));
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -360,20 +382,15 @@ function MainApp() {
   const [newStudentOpen, setNewStudentOpen] = useState(false);
   const [gradesStudentId, setGradesStudentId] = useState(null);
   
-  // Estados para Asistencia
   const [attendanceConfigOpen, setAttendanceConfigOpen] = useState(false);
-  const [activeAttendance, setActiveAttendance] = useState(null); // { subjectId, day }
+  const [activeAttendance, setActiveAttendance] = useState(null); 
 
   useEffect(() => { saveState(state); }, [state]);
 
   const course = state.selectedCourseId ? state.courses[state.selectedCourseId] : null;
 
   function createCourse(courseData) {
-    setState(s => ({
-      ...s,
-      selectedCourseId: courseData.id,
-      courses: { ...s.courses, [courseData.id]: courseData }
-    }));
+    setState(s => ({ ...s, selectedCourseId: courseData.id, courses: { ...s.courses, [courseData.id]: courseData } }));
   }
 
   function addStudent(studentData) {
@@ -412,7 +429,7 @@ function MainApp() {
       const today = new Date().toISOString().split('T')[0];
       
       Object.entries(records).forEach(([stId, status]) => {
-        if (status === 'skipped') return; // Omitidos no se guardan
+        if (status === 'skipped') return; 
         
         const st = { ...c.students[stId] };
         if (!st.attendance) st.attendance = {};
@@ -434,28 +451,17 @@ function MainApp() {
 
   const coursesList = Object.values(state.courses);
 
-  // Si estamos tomando asistencia, se esconde la tabla y solo mostramos la tarjeta
   if (activeAttendance && course) {
     return e('div', { className: 'max-w-4xl mx-auto p-4 md:p-6 min-h-dvh flex items-center justify-center' },
-      e(AttendanceView, {
-        course,
-        subjectId: activeAttendance.subjectId,
-        day: activeAttendance.day,
-        onClose: () => setActiveAttendance(null),
-        onSaveAttendance: handleSaveAttendance
-      })
+      e(AttendanceView, { course, subjectId: activeAttendance.subjectId, day: activeAttendance.day, onClose: () => setActiveAttendance(null), onSaveAttendance: handleSaveAttendance })
     );
   }
 
-  return e('div', { className: 'max-w-4xl mx-auto p-4 md:p-6' },
+  return e('div', { className: 'max-w-5xl mx-auto p-4 md:p-6' },
     e('header', { className: 'flex flex-col md:flex-row justify-between items-center mb-6 gap-4 bg-white p-4 rounded-3xl shadow-sm border border-slate-200' },
       e('div', null, e('h1', { className: 'text-2xl font-bold', style: { color: 'var(--azul)' } }, 'Preceptoría')),
       e('div', { className: 'flex gap-2 flex-wrap justify-center' },
-        e('select', { 
-          value: state.selectedCourseId || '', 
-          onChange: e => setState({ ...state, selectedCourseId: e.target.value }), 
-          className: 'px-3 py-2 border rounded-xl font-medium bg-slate-50' 
-        },
+        e('select', { value: state.selectedCourseId || '', onChange: e => setState({ ...state, selectedCourseId: e.target.value }), className: 'px-3 py-2 border rounded-xl font-medium bg-slate-50' },
           e('option', { value: '' }, '-- Seleccionar Curso --'),
           coursesList.map(c => e('option', { key: c.id, value: c.id }, c.name))
         ),
@@ -478,7 +484,11 @@ function MainApp() {
           e('thead', { className: 'bg-slate-50' },
             e('tr', null,
               e('th', { className: 'p-3 text-sm font-semibold border-b text-slate-600' }, 'Estudiante'),
-              e('th', { className: 'p-3 text-sm font-semibold border-b text-slate-600 text-center' }, 'Materias Inscriptas'),
+              e('th', { className: 'p-3 text-sm font-semibold border-b text-slate-600 text-center hidden md:table-cell' }, 'Materias'),
+              e('th', { className: 'p-3 text-sm font-semibold border-b text-slate-600 text-center', title: 'Presentes globales' }, 'P'),
+              e('th', { className: 'p-3 text-sm font-semibold border-b text-slate-600 text-center', title: 'Ausentes globales' }, 'A'),
+              e('th', { className: 'p-3 text-sm font-semibold border-b text-slate-600 text-center' }, '% Asist.'),
+              e('th', { className: 'p-3 text-sm font-semibold border-b text-slate-600 text-center' }, 'Promedio'),
               e('th', { className: 'p-3 text-sm font-semibold border-b text-slate-600 text-center' }, 'Acciones Institucionales')
             )
           ),
@@ -488,16 +498,50 @@ function MainApp() {
               const cursaSubs = (st.subjects_enrolled || []).length;
               const isRegular = cursaSubs === totalSubs;
               
+              // Calcular Asistencia Global
+              let totalPresent = 0; let totalAbsent = 0;
+              if (st.attendance) {
+                Object.values(st.attendance).forEach(att => {
+                  totalPresent += (att.present || 0);
+                  totalAbsent += (att.absent || 0);
+                });
+              }
+              const d = totalPresent + totalAbsent;
+              const attendancePct = d ? Math.round((totalPresent / d) * 100) : 0;
+              
+              // Calcular Promedio Institucional (todas las materias)
+              let allGrades = [];
+              if (st.grades) {
+                Object.values(st.grades).forEach(subjGrades => {
+                  Object.values(subjGrades).forEach(val => {
+                    const num = Number(val);
+                    if (!Number.isNaN(num) && val !== '') allGrades.push(num);
+                  });
+                });
+              }
+              const promedio = allGrades.length ? Math.round((allGrades.reduce((a, b) => a + b, 0) / allGrades.length) * 100) / 100 : '-';
+              
               return e('tr', { key: st.id, className: 'border-b hover:bg-slate-50 transition-colors' },
-                e('td', { className: 'p-3 font-medium' }, st.name),
-                e('td', { className: 'p-3 text-center' },
+                e('td', { className: 'p-3 font-medium text-slate-800' }, st.name),
+                e('td', { className: 'p-3 text-center hidden md:table-cell' },
                   isRegular 
-                    ? e('span', { className: 'bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-bold' }, 'Todas')
-                    : e('span', { className: 'bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full font-bold' }, `${cursaSubs} de ${totalSubs}`)
+                    ? e('span', { className: 'bg-emerald-100 text-emerald-800 text-xs px-2 py-1 rounded-full font-bold' }, 'Todas')
+                    : e('span', { className: 'bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full font-bold' }, `${cursaSubs}/${totalSubs}`)
                 ),
-                e('td', { className: 'p-3 text-center flex justify-center gap-2 flex-wrap' },
-                  e(Button, { variant: 'outline', className: '!text-xs !px-2 !py-1', onClick: () => setGradesStudentId(st.id) }, '📝 Calificaciones'),
-                  !isRegular && e(Button, { variant: 'outline', className: '!text-xs !px-2 !py-1 !border-orange-300 !text-orange-600', onClick: () => setExternalSubject(st.id) }, '🔗 Vincular Materia Externa')
+                e('td', { className: 'p-3 text-center text-sm font-medium text-emerald-600' }, totalPresent),
+                e('td', { className: 'p-3 text-center text-sm font-medium text-rose-600' }, totalAbsent),
+                e('td', { className: 'p-3 text-center text-sm font-bold ' + (d > 0 && attendancePct < 60 ? 'text-rose-600' : 'text-slate-700') }, d > 0 ? `${attendancePct}%` : '-'),
+                e('td', { className: 'p-3 text-center text-sm font-bold ' + (promedio !== '-' && promedio < 7 ? 'text-rose-600' : 'text-slate-700') }, promedio),
+                e('td', { className: 'p-3 text-center flex justify-center gap-1 flex-wrap' },
+                  e(Button, { variant: 'outline', className: '!text-xs !px-2 !py-1', onClick: () => setGradesStudentId(st.id) }, '📝 Notas'),
+                  e(Button, { variant: 'danger', className: '!text-xs !px-2 !py-1', onClick: () => {
+                      const phone = prompt('Número de WhatsApp del tutor o estudiante (Ej: 1122334455):', '');
+                      if(!phone) return;
+                      const cleanPhone = sanitizePhone(phone);
+                      const msg = buildRiskMessage(course, st, attendancePct, promedio);
+                      window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+                  }}, '⚠️ Riesgo'),
+                  !isRegular && e(Button, { variant: 'outline', className: '!text-xs !px-2 !py-1 !border-amber-300 !text-amber-600', onClick: () => setExternalSubject(st.id) }, '🔗 Ext.')
                 )
               );
             })
@@ -509,29 +553,13 @@ function MainApp() {
       'Seleccioná o creá un curso para comenzar a gestionar los estudiantes y sus trayectorias.'
     ),
 
-    // Inyección de Modales
     e(NewCourseModal, { open: newCourseOpen, onClose: () => setNewCourseOpen(false), onCreate: createCourse }),
     e(NewStudentModal, { open: newStudentOpen, course, onClose: () => setNewStudentOpen(false), onAdd: addStudent }),
-    e(AttendanceConfigModal, { 
-      open: attendanceConfigOpen, 
-      course, 
-      onClose: () => setAttendanceConfigOpen(false), 
-      onStart: (subjectId, day) => {
-        setAttendanceConfigOpen(false);
-        setActiveAttendance({ subjectId, day });
-      }
-    }),
-    e(GradesModal, { 
-      open: !!gradesStudentId, 
-      student: course?.students[gradesStudentId], 
-      course, 
-      onClose: () => setGradesStudentId(null), 
-      onSave: saveGrades 
-    })
+    e(AttendanceConfigModal, { open: attendanceConfigOpen, course, onClose: () => setAttendanceConfigOpen(false), onStart: (subjectId, day) => { setAttendanceConfigOpen(false); setActiveAttendance({ subjectId, day }); } }),
+    e(GradesModal, { open: !!gradesStudentId, student: course?.students[gradesStudentId], course, onClose: () => setGradesStudentId(null), onSave: saveGrades })
   );
 }
 
-// Renderizar
 const rootEl = document.getElementById('root');
 const root = ReactDOM.createRoot(rootEl);
 root.render(e(MainApp));
