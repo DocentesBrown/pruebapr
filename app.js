@@ -33,18 +33,17 @@ function Button({ onClick, children, variant = 'primary', className = '', disabl
 }
 
 // ====== MODALES ======
-// 1. Crear Curso (Wizard de 2 pasos)
+// 1. Crear Curso (Wizard de 2 pasos unificando Año/División y Dropdowns para materias)
 function NewCourseModal({ open, onClose, onCreate }) {
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
-  const [year, setYear] = useState('');
   const [shift, setShift] = useState('');
   const [subjectCount, setSubjectCount] = useState('');
   const [subjects, setSubjects] = useState([]);
 
   useEffect(() => {
     if (open) {
-      setStep(1); setName(''); setYear(''); setShift(''); setSubjectCount(''); setSubjects([]);
+      setStep(1); setName(''); setShift(''); setSubjectCount(''); setSubjects([]);
     }
   }, [open]);
 
@@ -71,17 +70,23 @@ function NewCourseModal({ open, onClose, onCreate }) {
   function submit(ev) {
     ev && ev.preventDefault();
     if (step === 1) {
-      if (!name.trim() || !year.trim()) return alert('Nombre y Año son obligatorios.');
+      if (!name.trim()) return alert('El Nombre del curso es obligatorio.');
       setStep(2);
     } else {
-      const validSubs = subjects.filter(s => s.name.trim());
-      if (validSubs.length === 0) return alert('Debes cargar al menos una materia válida.');
-      onCreate({ id: uid('curso'), name, year, shift, subjects: validSubs, students: {} });
+      // Validación estricta: No permitir materias sin día o módulo seleccionado
+      const incomplete = subjects.some(s => !s.name.trim() || !s.days || !s.modulos);
+      if (incomplete) {
+        return alert('Debes completar el nombre, el día y el módulo para todas las materias.');
+      }
+      onCreate({ id: uid('curso'), name, shift, subjects, students: {} });
       onClose();
     }
   }
 
   if (!open) return null;
+
+  const diasOptions = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+  const modulosOptions = ['1', '2', '3', '4', '5', '6'];
 
   return e('div', { className: 'fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50' },
     e('div', { className: 'bg-white rounded-3xl p-6 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto' },
@@ -91,8 +96,7 @@ function NewCourseModal({ open, onClose, onCreate }) {
       ),
       e('form', { onSubmit: submit, className: 'space-y-4' },
         step === 1 ? e(React.Fragment, null,
-          e('div', null, e('label', { className: 'block text-sm mb-1 font-medium' }, 'Nombre del curso (Ej: 1° A)'), e('input', { value: name, onChange: ev => setName(ev.target.value), className: 'w-full px-3 py-2 border rounded-xl', autoFocus: true })),
-          e('div', null, e('label', { className: 'block text-sm mb-1 font-medium' }, 'Año (1° a 6°)'), e('input', { value: year, onChange: ev => setYear(ev.target.value), className: 'w-full px-3 py-2 border rounded-xl' })),
+          e('div', null, e('label', { className: 'block text-sm mb-1 font-medium' }, 'Nombre del curso (Ej: 1°A, 2°B, 3°1°)'), e('input', { value: name, onChange: ev => setName(ev.target.value), className: 'w-full px-3 py-2 border rounded-xl', autoFocus: true })),
           e('div', null, e('label', { className: 'block text-sm mb-1 font-medium' }, 'Turno (Opcional)'), e('input', { value: shift, onChange: ev => setShift(ev.target.value), className: 'w-full px-3 py-2 border rounded-xl' }))
         ) : e(React.Fragment, null,
           e('div', null, e('label', { className: 'block text-sm mb-1 font-medium' }, 'Cantidad total de materias'), e('input', { type: 'number', min: 1, max: 25, value: subjectCount, onChange: handleCountChange, className: 'w-full px-3 py-2 border rounded-xl' })),
@@ -100,8 +104,14 @@ function NewCourseModal({ open, onClose, onCreate }) {
             e('div', { className: 'font-bold text-sm', style: { color: 'var(--violeta)' } }, `Materia ${i + 1}`),
             e('input', { placeholder: 'Nombre de la materia', value: sub.name, onChange: ev => handleSubjectChange(i, 'name', ev.target.value), className: 'w-full px-2 py-1 border rounded' }),
             e('div', { className: 'flex gap-2' },
-              e('input', { placeholder: 'Días de cursada', value: sub.days, onChange: ev => handleSubjectChange(i, 'days', ev.target.value), className: 'w-1/2 px-2 py-1 border rounded' }),
-              e('input', { placeholder: 'Módulos', value: sub.modulos, onChange: ev => handleSubjectChange(i, 'modulos', ev.target.value), className: 'w-1/2 px-2 py-1 border rounded' })
+              e('select', { value: sub.days, onChange: ev => handleSubjectChange(i, 'days', ev.target.value), className: 'w-1/2 px-2 py-1 border rounded bg-white' },
+                e('option', { value: '' }, 'Día...'),
+                diasOptions.map(d => e('option', { key: d, value: d }, d))
+              ),
+              e('select', { value: sub.modulos, onChange: ev => handleSubjectChange(i, 'modulos', ev.target.value), className: 'w-1/2 px-2 py-1 border rounded bg-white' },
+                e('option', { value: '' }, 'Módulo...'),
+                modulosOptions.map(m => e('option', { key: m, value: m }, m))
+              )
             )
           ))
         ),
@@ -249,7 +259,7 @@ function AttendanceConfigModal({ open, course, onClose, onStart }) {
           e('label', { className: 'block text-sm mb-1 font-medium' }, 'Día de la semana'),
           e('select', { value: day, onChange: e => setDay(e.target.value), className: 'w-full px-3 py-2 border rounded-xl' },
             e('option', { value: '' }, '-- Seleccionar --'),
-            ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'].map(d => e('option', { key: d, value: d }, d))
+            ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'].map(d => e('option', { key: d, value: d }, d))
           )
         ),
         e('div', null,
@@ -385,7 +395,7 @@ function MainApp() {
 
   function setExternalSubject(studentId) {
     const sId = prompt('¿ID/Nombre exacto de la materia para vincular externamente?');
-    const yearOrigin = prompt('¿En qué año de origen la cursa? (Ej: 2° A)');
+    const yearOrigin = prompt('¿En qué curso de origen la cursa? (Ej: 2°A)');
     if(!sId || !yearOrigin) return;
     setState(s => {
        const c = { ...s.courses[s.selectedCourseId] };
@@ -447,9 +457,8 @@ function MainApp() {
           className: 'px-3 py-2 border rounded-xl font-medium bg-slate-50' 
         },
           e('option', { value: '' }, '-- Seleccionar Curso --'),
-          coursesList.map(c => e('option', { key: c.id, value: c.id }, `${c.name} - ${c.year} Año`))
+          coursesList.map(c => e('option', { key: c.id, value: c.id }, c.name))
         ),
-        // BOTÓN NUEVO: Tomar Asistencia
         course && e(Button, { variant: 'secondary', onClick: () => setAttendanceConfigOpen(true) }, '📋 Tomar Asistencia'),
         e(Button, { variant: 'outline', onClick: () => setNewCourseOpen(true) }, '+ Nuevo Curso')
       )
@@ -459,7 +468,7 @@ function MainApp() {
       e('div', { className: 'flex justify-between items-center mb-4 border-b pb-4' },
         e('div', null,
           e('h2', { className: 'text-2xl font-bold', style: { color: 'var(--violeta)' } }, course.name),
-          e('p', { className: 'text-sm text-slate-500 font-medium mt-1' }, `${course.year} Año • Turno ${course.shift || 'N/A'} • ${course.subjects.length} materias`)
+          e('p', { className: 'text-sm text-slate-500 font-medium mt-1' }, `Turno ${course.shift || 'N/A'} • ${course.subjects.length} materias`)
         ),
         e(Button, { variant: 'danger', onClick: () => setNewStudentOpen(true) }, '+ Agregar Estudiante')
       ),
